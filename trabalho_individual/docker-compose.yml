@@ -1,0 +1,76 @@
+version: "3.3"
+
+services:
+  chat-service-db:
+    container_name: chat-service-db
+    image: mysql:5.7.20
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - 7200:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+    volumes:
+      - ./chat-service/data:/var/lib/mysql
+
+  users-service-db:
+    container_name: users-service-db
+    image: mysql:5.7.20
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    ports:
+      - 7201:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+    volumes:
+      - ./users-service/data:/var/lib/mysql
+
+  users-service:
+    container_name: users-service
+    build: ./users-service
+    ports:
+      - 7101:7101
+    depends_on:
+      - users-service-db
+
+  chat-service:
+    container_name: chat-service
+    build: ./chat-service
+    ports:
+      - 7100:7100
+    depends_on:
+      - chat-service-db
+  
+  api-gateway:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - 7000:7000
+    depends_on:
+      - chat-service
+      - users-service
+
+  chat-app:
+    container_name: chat-app
+    build: ./chat-app
+    ports:
+      - 7001:7001
+    depends_on:
+      - api-gateway
+
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin
+    links: 
+      - users-service-db:users-service-db
+      - chat-service-db:chat-service-db
+    ports: 
+      - 7300:80
+    volumes: 
+      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+    depends_on:
+      - chat-service-db
+      - users-service-db
+  
